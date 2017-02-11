@@ -80,7 +80,7 @@ int main(int argc, char *argv[]){
   thArr = (pthread_t*) malloc(nThreads * sizeof(pthread_t));
   if(thArr == NULL){
     fprintf(stderr,"Could not allocate memory for thread ID.\n");
-    return 1;
+    exit(1);
   }
   //set the arguments to pass for each thread
   args.pointer = &count;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]){
   //get the initial time, check for error
   if(clock_gettime(CLOCK_REALTIME, &start)){
     fprintf(stderr, "Failed to obtain starting time.\n");
-    return 1;
+    exit(1);
   }
 
   //start threading
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
   for(i = 0; i < nThreads; i++){
     if(pthread_create(&(thArr[i]), NULL, doNone, (void*) &args)){
       fprintf(stderr, "pthread_create() error\n");
-      return 1;
+      exit(1);
     }
   }
 
@@ -106,19 +106,34 @@ int main(int argc, char *argv[]){
   for(j =0; j < nThreads; j++){
     if(pthread_join(thArr[j], NULL)){
       fprintf(stderr, "pthread_join() error\n");
-      return 1;
+      exit(1);
     }
   }
 
-  printf("Count is: %d\n", count);
+  //take end time
+  if(clock_gettime(CLOCK_REALTIME, &end)){
+    fprintf(stderr, "Failed to obtain ending time.\n");
+    exit(1);
+  }
 
+  //calculate the numbers to output
+  char name[] = "add-none";
+  int ops = nThreads * nIter * 2;
+  long long sec = (long long) (end.tv_sec - start.tv_sec);
+  long long nsec = (long long) (end.tv_nsec - start.tv_nsec);
+  long long result = sec * 1000000000 + nsec;
+  double tpo = (double) (result / ops) + ((result % ops) / (double) ops);
+
+  //output as csv
+  printf("%s,%d,%d,%d,%ld,%f,%ld\n", name, nThreads, nIter, ops, result, tpo, count);
+
+  //free memory
   free(thArr);
 }
 
 void *doNone(void* args){
-  pthArg *pArgs = (pthArg*) args;
-  int nIter = pArgs->nIter;
-  long long *pointer = pArgs->pointer;
+  int nIter = ((pthArg*)args)->nIter;
+  long long *pointer = ((pthArg*)args)->pointer;
 
   int i;
   for(i = 0; i < nIter; i++){
