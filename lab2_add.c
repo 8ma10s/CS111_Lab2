@@ -4,18 +4,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-//STRUCT DEFINITIONS
+///STRUCT DEFINITIONS///
 
 typedef struct pthArg{
   long long *pointer;
   int nIter;
 }pthArg;
 
-//FUNCTIONS
+///GLOBAL VARIABLES
+int opt_yield = 0;
+
+///FUNCTIONS///
 
 void* doNone(void *args);
 void add(long long *pointer, long long value);
 
+
+///MAIN///
 int main(int argc, char *argv[]){
 
   //STRUCTS AND VARIABLES
@@ -24,6 +29,7 @@ int main(int argc, char *argv[]){
   struct option longopts[] = {
     {"threads", required_argument, NULL, 't'},
     {"iterations", required_argument, NULL, 'i'},
+    {"yield", no_argument, NULL, 'y'},
     {0,0,0,0},
   };
 
@@ -31,7 +37,7 @@ int main(int argc, char *argv[]){
   int nThreads = 1;
   int nIter = 1;
   long long count = 0;
-
+  char *name = "add-none";
   //time holding structs
   struct timespec start;
   struct timespec end;
@@ -48,7 +54,7 @@ int main(int argc, char *argv[]){
   //ACTUAL CODE
 
   //set the values for these variables using getopt_long
-  while((opt = getopt_long(argc,argv, "t:i:", longopts, &longindex)) != -1){
+  while((opt = getopt_long(argc,argv, "t:i:y", longopts, &longindex)) != -1){
     switch(opt){
       //THREAD
     case 't':
@@ -59,6 +65,7 @@ int main(int argc, char *argv[]){
       }
       nThreads = temp;
       break;
+
       //ITERATIONS
     case 'i':
       temp = atoi(optarg);
@@ -68,12 +75,18 @@ int main(int argc, char *argv[]){
       }
       nIter = temp;
       break;
+
+      //YIELD
+    case 'y':
+      opt_yield = 1;
+      name = "add-yield-none";
+      break;
+
       //UNRECOGNIZED OPTION (DEFAULT)
     default:
       fprintf(stderr, "%s is not an option. Skipping this option.\n", argv[optind - 1]);
       continue;
     }
-
   } 
 
   //Allocate appropriate amount of memory for the thread ID container
@@ -117,7 +130,6 @@ int main(int argc, char *argv[]){
   }
 
   //calculate the numbers to output
-  char name[] = "add-none";
   int ops = nThreads * nIter * 2;
   long long sec = (long long) (end.tv_sec - start.tv_sec);
   long long nsec = (long long) (end.tv_nsec - start.tv_nsec);
@@ -145,5 +157,8 @@ void *doNone(void* args){
 
 void add(long long *pointer, long long value) {
   long long sum = *pointer + value;
+  if(opt_yield){
+    sched_yield();
+  }
   *pointer = sum;
 }
