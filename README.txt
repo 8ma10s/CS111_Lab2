@@ -14,3 +14,10 @@ Decreasing average cost indicates the existence of high fixed cost. That is, the
 
 From the logic above, we can make number of iterations really large, so that the portion of the "fixed cost" added to time per operation is insignificant. That means, the higher the iteration, the closer its value for "time per operation" will be to the true value.
 
+2.1.4
+For small number of threads, the chances of two (or more) threads reading/writing at the same time is very low, and thus there are only few occurrences of a thread having to wait for the locks to be unlocked (waiting for it to be unlocked takes time).
+
+All operations slow down as number of threads rises because of the increasing probability of 2 threads trying to operate at the same time. "Any of the combinations of 2 threads out of 12 threads operating at the same time"  has higher probability than "2 out of 2 threads operating at the same time".  Since only 1 thread can operate on the critical section at a time, the other thread trying to operate on the same variable must stop at that location of the code and wait for the critical section to be open. 
+
+Spin locks are so expensive for large numbers of threads because the threads don't sleep, but instead keep looping ("busywait") until the locks are unlocked. So essentially, all threads are constantly working doing its full work, either operating or checking for locks to be open.
+

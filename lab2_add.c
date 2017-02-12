@@ -3,6 +3,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 ///STRUCT DEFINITIONS///
 
@@ -13,13 +14,17 @@ typedef struct pthArg{
 
 ///GLOBAL VARIABLES
 int opt_yield = 0;
-
+int doSync = 0;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+int spinLock = 0;
 ///FUNCTIONS///
 
 void* doNone(void *args);
 void add(long long *pointer, long long value);
-
-
+int setSyncType(char *opt);
+void setName(char **name);
+void syncLock();
+void syncUnlock();
 ///MAIN///
 int main(int argc, char *argv[]){
 
@@ -30,6 +35,7 @@ int main(int argc, char *argv[]){
     {"threads", required_argument, NULL, 't'},
     {"iterations", required_argument, NULL, 'i'},
     {"yield", no_argument, NULL, 'y'},
+    {"sync", required_argument, NULL, 's'},
     {0,0,0,0},
   };
 
@@ -54,7 +60,7 @@ int main(int argc, char *argv[]){
   //ACTUAL CODE
 
   //set the values for these variables using getopt_long
-  while((opt = getopt_long(argc,argv, "t:i:y", longopts, &longindex)) != -1){
+  while((opt = getopt_long(argc,argv, "t:i:ys:", longopts, &longindex)) != -1){
     switch(opt){
       //THREAD
     case 't':
@@ -79,7 +85,15 @@ int main(int argc, char *argv[]){
       //YIELD
     case 'y':
       opt_yield = 1;
-      name = "add-yield-none";
+      setName(&name);
+      break;
+
+      //SYNC
+    case 's':
+      if(setSyncType(optarg) != 0){
+	fprintf(stderr, "Not a valid sync argument. Skipping this option.\n");
+      }
+      setName(&name);
       break;
 
       //UNRECOGNIZED OPTION (DEFAULT)
@@ -149,16 +163,115 @@ void *doNone(void* args){
 
   int i;
   for(i = 0; i < nIter; i++){
+
+    //do actual operation (add 1 , subt 1)
     add(pointer, 1);
     add(pointer, -1);
-  }
 
+  }
 }
 
 void add(long long *pointer, long long value) {
-  long long sum = *pointer + value;
-  if(opt_yield){
-    sched_yield();
+
+  while(1){
+    syncLock();
+    long long sum = *pointer + value;
+    if(opt_yield){
+      sched_yield();
+    }
+    if(doSync == 3){
+      if (__sync_val_compare_and_swap(pointer, sum - value, sum) != (sum - value)){
+	continue;
+      }
+      else{
+	break;
+      }
+    }
+
+    *pointer = sum;
+    syncUnlock();
+    break;
   }
-  *pointer = sum;
+}
+
+int setSyncType(char *opt){
+
+  if(strcmp(opt, "m") == 0){
+    doSync = 1;
+  }
+  else if(strcmp(opt, "s") == 0){
+    doSync = 2;
+  }
+  else if(strcmp(opt, "c") == 0){
+    doSync = 3;
+  }
+  else{
+    return 1;
+  }
+  return 0;
+
+}
+
+void setName(char **name){
+  if(opt_yield == 1){
+    if(doSync == 0){
+      *name = "add-yield-none";
+    }
+    else if(doSync == 1){
+      *name = "add-yield-m";
+    }
+    else if(doSync == 2){
+      *name = "add-yield-s";
+    }
+    else if(doSync == 3){
+      *name = "add-yield-c";
+    }
+  }
+
+  else{
+    if(doSync == 0){
+      *name = "add-none";
+    }
+    else if(doSync == 1){
+      *name = "add-m";
+    }
+    else if(doSync == 2){
+      *name = "add-s";
+    }
+    else if(doSync == 3){
+      *name = "add-c";
+    }
+  }
+}
+
+void syncLock(){
+
+  //if mutex option selected, attempt to lock
+  if(doSync == 1){
+    if(pthread_mutex_lock(&m)){
+      fprintf(stderr, "Error locking the critical section.\n");
+      exit(1);
+    }
+  }
+  
+  else if(doSync == 2){
+    while(__sync_lock_test_and_set(&spinLock, 1)){
+      continue;
+    }
+  }
+}
+
+void syncUnlock(){
+  //if mutex selected, attempt to unlock
+  if(doSync == 1){
+    if(pthread_mutex_unlock(&m)){
+      fprintf(stderr, "Error unlocking the critical section.\n");
+      exit(1);
+    }
+  }
+  
+  else if(doSync == 2){
+    __sync_lock_release(&spinLock);
+  }
+  
 }
