@@ -26,6 +26,10 @@ if(list == NULL || element == NULL){
   element->next = current->next;
   element->prev = current;
 
+  if(opt_yield & INSERT_YIELD){
+    sched_yield();
+  }
+
   if(current->next != NULL){
     current->next->prev = element;
   }
@@ -51,6 +55,11 @@ int SortedList_delete(SortedListElement_t *element){
   }
   
   element->prev->next = element->next;
+
+  if(opt_yield & DELETE_YIELD){
+    sched_yield();
+  }
+
   element->next->prev = element->prev;
   
   return 0;
@@ -76,6 +85,9 @@ SortedListElement_t *SortedList_lookup(SortedList_t *list, const char *key){
       return current;
     }
     else{
+      if(opt_yield & LOOKUP_YIELD){
+	sched_yield();
+      }
       current=current->next;
     }
   }
@@ -107,6 +119,9 @@ int SortedList_length(SortedList_t *list){
     }
     else{
       count++;
+      if(opt_yield & LOOKUP_YIELD){
+	sched_yield();
+      }
       current=current->next;
     }
   }
