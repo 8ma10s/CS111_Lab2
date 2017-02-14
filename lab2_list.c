@@ -172,6 +172,7 @@ int main(int argc, char*argv[]){
   //output as csv
   printf("%s,%d,%d,%d,%d,%ld,%d\n", name, nThreads, nIter, 1, ops, result, tpo);
 
+  return 0;
 
 }
 
@@ -233,7 +234,7 @@ void setName (char **name){
     }
   }
 
-  else if(opt_yield == INSERT_YIELD | DELETE_YIELD){
+  else if(opt_yield == (INSERT_YIELD | DELETE_YIELD)){
     if(doSync == 0){
       *name = "list-id-none";
     }
@@ -257,7 +258,7 @@ void setName (char **name){
     }
   }
 
-  else if(opt_yield == INSERT_YIELD | LOOKUP_YIELD){
+  else if(opt_yield == (INSERT_YIELD | LOOKUP_YIELD)){
     if(doSync == 0){
       *name = "list-il-none";
     }
@@ -269,7 +270,19 @@ void setName (char **name){
     }
   }
 
-  else if(opt_yield == INSERT_YIELD | DELETE_YIELD | LOOKUP_YIELD){
+  else if(opt_yield == (DELETE_YIELD | LOOKUP_YIELD)){
+    if(doSync == 0){
+      *name = "list-dl-none";
+    }
+    else if(doSync == 1){
+      *name = "list-dl-m";
+    }
+    else if(doSync == 2){
+      *name = "list-dl-s";
+    }
+  }
+
+  else if(opt_yield == (INSERT_YIELD | DELETE_YIELD | LOOKUP_YIELD)){
     if(doSync == 0){
       *name = "list-idl-none";
     }
