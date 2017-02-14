@@ -13,7 +13,7 @@ lab2_list.o: lab2_list.c
 	gcc -g -o lab2_list.o -c lab2_list.c
 
 tests:
-	rm lab2_add.csv lab2_list.csv
+	rm -f lab2_add.csv lab2_list.csv
 	# range of threads and iterations to see what it takes to cause a failure
 	./lab2_add --threads=2  --iterations=100    >> lab2_add.csv
 	./lab2_add --threads=2  --iterations=1000   >> lab2_add.csv
