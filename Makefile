@@ -1,3 +1,19 @@
+tarfile = lab2_add.c SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2_list.csv lab2_add-1.png lab2_add-2.png lab2_add-3.png lab2_add-4.png lab2_add-5.png lab2_list-1.png lab2_list-2.png lab2_list-3.png lab2_list-4.png README.txt
+
+rmfile = lab2a-804608241.tar.gz lab2_add-*.png lab2_list-*.png SortedList.o lab2_list.o lab2_list lab2_add lab2_add.csv lab2_list.csv
+
+build: lab2_list.o SortedList.o lab2_add.c
+	gcc -g -o lab2_list lab2_list.o SortedList.o -pthread
+	gcc -g -o lab2_add lab2_add.c -pthread
+
+SortedList.o: SortedList.h SortedList.c
+	gcc -g -o SortedList.o -c SortedList.c
+
+lab2_list.o: lab2_list.c
+	gcc -g -o lab2_list.o -c lab2_list.c
+
+tests:
+	rm -f lab2_add.csv lab2_list.csv
 	# range of threads and iterations to see what it takes to cause a failure
 	./lab2_add --threads=2  --iterations=100    >> lab2_add.csv
 	./lab2_add --threads=2  --iterations=1000   >> lab2_add.csv
@@ -108,7 +124,7 @@
 	./lab2_add --threads=4  --iterations=10000 --sync=s >> lab2_add.csv
 	./lab2_add --threads=8  --iterations=10000 --sync=s >> lab2_add.csv
 	./lab2_add --threads=12 --iterations=10000 --sync=s >> lab2_add.csv
-	
+
 	# generate time per operation vs number of iterations
 	./lab2_list --threads=1  --iterations=10s      >> lab2_list.csv
 	./lab2_list --threads=1  --iterations=100s      >> lab2_list.csv
@@ -225,3 +241,12 @@
 	./lab2_list --threads=12 --iterations=1000 --sync=s >> lab2_list.csv
 	./lab2_list --threads=16 --iterations=1000 --sync=s >> lab2_list.csv
 	./lab2_list --threads=24 --iterations=1000 --sync=s >> lab2_list.csv
+
+graphs: 
+	/usr/local/cs/bin/gnuplot ./lab2_add.gp
+	/usr/local/cs/bin/gnuplot ./lab2_list.gp
+
+tarball: $(tarfile)
+	tar -czvf lab2a-804608241.tar.gz $(tarfile)
+clean:
+	rm $(rmfile)

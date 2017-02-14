@@ -1,3 +1,29 @@
+Included Files
+
+lab2_add.c: adds and subtracts 1, with yield and sync options
+SortedList.h: Interface for SortedList
+SortedList.c: Implementation of the SortedList
+lab2_list.c: driver program that operates on SortedList, with yield and sync options
+Makefile: contains all information needed for compilation and execution
+lab2_add.csv: data points used for analyzing lab2_add
+lab2_lis.csv: data points used for analyzing lab2_list
+
+lab2_add-1.png -- lab2_add-5.png: statistics for lab2_add
+lab2_list-1.png -- lab2_list-4.png: statistics for lab2_list
+README.txt: this file. contains information about all files
+
+Limitations
+
+For lab2_add, sync options are made to be ignored if anything other than m,s,c are specified. Iterations and thread numbers are ignored if they are less than 1.
+
+For lab2_list, sync options are ignored if none of the letters are i,d,l. If one of them is i,d,l, then that option is set.
+This program cannot sort correctly if multi-threaded, unless you enable sync options.
+
+Test Methodology
+Tests are done solely using the test script given.
+
+Questions (answers)
+
 2.1.1
 It takes many iterations before errors are seen because then the total time to complete all iterations will be longer, increasing the chance of two iterations from the different thread occurring at the same time. 
 
@@ -21,3 +47,12 @@ All operations slow down as number of threads rises because of the increasing pr
 
 Spin locks are so expensive for large numbers of threads because the threads don't sleep, but instead keep looping ("busywait") until the locks are unlocked. So essentially, all threads are constantly working doing its full work, either operating or checking for locks to be open.
 
+2.2.1
+Both mutexes at part 1 and 2 are similar in a way that it goes up with number of threads. That is because the more threads they have, the more chance each thread (and thus, each operation) has to wait for the locks to be unlocked (if 12 threads, all 12 are competing vs. only 2 for 2 threads).
+
+They are different in a way that the cost per operation goes up at the lower rate for part1 mutex, whereas the rate of change of cost per operation is almost contant for part 2. That is most likely due to the fact that for linked lists, the actual time per operation is so significant compared to simple addition. For adding program, one operation takes only the small amount of time (thus causing less wait time), whereas the longer operations in the linked lists cause more threads to wait for that mutex to be unlocked (for each thread that is waiting, the cost per operation goes up).
+
+2.2.2
+Both are similar in a way that the cost goes up as number of threads increases. That is, for both methods, the cost per operation increases as more threads compete in order to complete their own operations.
+
+The difference is that spin locks tend to have increasing cost compared to mutex (the gap between mutex and spin lock increases as number of threads increase). That most likely happens becaue spin lock does not put the thread to sleep, so some of the CPU time is used for polling (if the lock is unlocked). While polling, that core of the CPU cannot do its other share of work, thus slowing down the entire system to some extent. This affects the execution time of the program, causing spin locks to be slower. It is understandable that the gap between spin and mutex increases because more polling happens as number of threads increase, eating more CPU time.
