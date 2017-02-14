@@ -9,13 +9,16 @@
 
 typedef struct pthArg{
   SortedList_t *list;
+  SortedListElement_t *element;
   int nIter;
+  int nThreads;
 }pthArg;
 
 ///GLOBAL VARIABLES
 int doSync = 0;
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 int spinLock = 0;
+int opt_yield = 0;
 
 //FUNCTIONS
 int setYieldType(char *opt);
@@ -24,6 +27,7 @@ int setSyncType(char *opt);
 void syncLock();
 void syncUnlock();
 void setChar(SortedListElement_t slArr[], char chArr[][5], int arrSize);
+void *listOps(void* args);
 
 ///MAIN///
 int main(int argc, char*argv[]){
@@ -33,14 +37,14 @@ int main(int argc, char*argv[]){
     {"threads", required_argument, NULL, 't'},
     {"iterations", required_argument, NULL, 'i'},
     {"yield", required_argument, NULL, 'y'},
+    {"sync", required_argument, NULL, 's'},
     {0,0,0,0},
   };
 
   //number variables
-  opt_yield= 0;
   int nThreads = 1;
   int nIter = 1;
-  char *name = "add-none";
+  char *name = "list-none-none";
   //time holding structs
   struct timespec start;
   struct timespec end;
@@ -50,13 +54,10 @@ int main(int argc, char*argv[]){
   int longindex;
   int temp;
 
-  //pthread related variables
-  pthArg args;
-
   //ACTUAL CODE
 
   //set the values for these variables using getopt_long
-  while((opt = getopt_long(argc,argv, "t:i:y:", longopts, &longindex)) != -1){
+  while((opt = getopt_long(argc,argv, "t:i:y:s:", longopts, &longindex)) != -1){
     switch(opt){
       //THREAD
     case 't':
@@ -115,8 +116,61 @@ int main(int argc, char*argv[]){
   //Create thread ID container
   pthread_t thArr[nThreads];
 
+  //Create thread argument container
+  pthArg args[nThreads];
+  int t;
+  for (t = 0; t < nThreads; t++){
+    args[t].list = &list;
+    args[t].nIter = nIter;
+    args[t].nThreads = nThreads;
+    args[t].element = &(slArr[t * nIter]);
+  }
 
+  //get the initial time, check for error
+  if(clock_gettime(CLOCK_REALTIME, &start)){
+    fprintf(stderr, "Failed to obtain starting time.\n");
+    exit(1);
+  }
 
+  //start threading
+  int i;
+  for(i = 0; i < nThreads; i++){
+    if(pthread_create(&(thArr[i]), NULL, listOps, (void*) &(args[i]))){
+      fprintf(stderr, "pthread_create() error\n");
+      exit(1);
+    }
+  }
+
+  //join threads
+  int j;
+  for(j =0; j < nThreads; j++){
+    if(pthread_join(thArr[j], NULL)){
+      fprintf(stderr, "pthread_join() error\n");
+      exit(1);
+    }
+  }
+
+  //take end time
+  if(clock_gettime(CLOCK_REALTIME, &end)){
+    fprintf(stderr, "Failed to obtain ending time.\n");
+    exit(1);
+  }
+
+  // check that list is zero
+  if(SortedList_length(&list) != 0){
+    fprintf(stderr, "list length is not 0 at the end\n");
+    exit(1);
+  }
+
+  //calculate the numbers to output
+  int ops = nThreads * nIter * 3;
+  long long sec = (long long) (end.tv_sec - start.tv_sec);
+  long long nsec = (long long) (end.tv_nsec - start.tv_nsec);
+  long long result = sec * 1000000000 + nsec;
+  int tpo = result / ops;
+
+  //output as csv
+  printf("%s,%d,%d,%d,%d,%ld,%d\n", name, nThreads, nIter, 1, ops, result, tpo);
 
 
 }
@@ -288,7 +342,7 @@ void syncUnlock(){
   
 }
 
-void setChar(SortedListElement_t slArr[], char chArr[][5] int arrSize){
+void setChar(SortedListElement_t slArr[], char chArr[][5], int arrSize){
   char chList[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
   int i,j;
@@ -297,7 +351,43 @@ void setChar(SortedListElement_t slArr[], char chArr[][5] int arrSize){
       chArr[i][j] = chList[rand() % 62];
     }
     chArr[i][4] = '\0';
-    slArr[i].key = &(chArr[i]);
+    slArr[i].key = (chArr[i]);
   }
 
+}
+
+void *listOps(void* args){
+
+  pthArg * pArgs = (pthArg*) args;
+  
+  int i;
+  for(i = 0; i < pArgs->nIter; i++){
+    syncLock();
+    SortedList_insert(pArgs->list, &((pArgs->element)[i]));
+    syncUnlock();
+  }
+  
+  syncLock();
+  int listSize =  SortedList_length(pArgs->list);
+  syncUnlock();
+  if (listSize < (pArgs->nIter) || listSize > (pArgs->nIter) * (pArgs->nThreads)){
+    fprintf(stderr, "Invalid number of elements.\n");
+    exit(1);
+  }
+  
+  SortedListElement_t *toDelete;
+  for(i = 0; i < pArgs->nIter; i++){
+    syncLock();
+    if((toDelete = SortedList_lookup(pArgs->list, (pArgs->element)[i].key)) == NULL){
+      fprintf(stderr, "Failed to locate the key inserted.\n");
+      syncUnlock();
+      exit(1);
+    }   
+    if(SortedList_delete(toDelete)){
+      fprintf(stderr, "Detected corruption upon deletion.\n");
+      syncUnlock();
+      exit(1);
+    }
+    syncUnlock();
+  }
 }
