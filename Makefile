@@ -23,8 +23,8 @@ tests:
 	cat lab2_add.csv >> lab_2b_list.csv
 	cat lab2_list.csv >> lab_2b_list.csv
 
-graphs: lab2.gp
-	/usr/local/cs/bin/gnuplot lab2.gp
+graphs: lab2b.gp
+	/usr/local/cs/bin/gnuplot lab2b.gp
 
 tarball: $(tarfile)
 	tar -czvf lab2a-804608241.tar.gz $(tarfile)
