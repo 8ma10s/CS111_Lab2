@@ -8,3 +8,8 @@ Most of the cycles are being spent in the polling process in the spin-lock tests
 
 Most of the cycles are being spent on the time each thread sleeps due to actual operation for mutex locks. Looking at the add and list operations, the throughput of list operation decrease constantly as number of threads increases, but not so much for add operations. That indicates that the large amount of time is used for insertion,deletion of list: as threads increases, so does the number of elements that needs to be inserted increases, and each insertion/deletion locks the entire linked list, causing other threads to sleep until it is done.
 
+2.3.2
+According to the performance test, the function syncLock(), which contains all of the codes that does the spinlock implementation (including polling), is consuming 4257/4523 of the cycles.
+
+This operations become so expensive because more threads compete against each other to get the lock for every insertion/lookup/delete etc. If one thread is doing any of the actions, all other 11 threads cannot do anything but to simply pole, wasting the wait time multiplied by the total number of waiting threads (11 * wait time).
+
