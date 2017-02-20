@@ -12,25 +12,27 @@ typedef struct pthArg{
   SortedListElement_t *element;
   int nIter;
   int nThreads;
+  int nLists;
   long long *muTime;
 }pthArg;
 
 ///GLOBAL VARIABLES
 int doSync = 0;
-pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
-int spinLock = 0;
+pthread_mutex_t *m;
+int *spinLock;
 int opt_yield = 0;
 
 //FUNCTIONS
 int setYieldType(char *opt);
 void setName(char **name);
 int setSyncType(char *opt);
-void syncLock();
-void syncUnlock();
+void syncLock(int num);
+void syncUnlock(int num);
 void setChar(SortedListElement_t slArr[], char chArr[][5], int arrSize);
 void *listOps(void* args);
 void getTime(struct timespec *ts);
 long long getTimeDiff(struct timespec *start, struct timespec *end);
+unsigned long hash(const unsigned char *str);
 
 ///MAIN///
 int main(int argc, char*argv[]){
@@ -41,12 +43,14 @@ int main(int argc, char*argv[]){
     {"iterations", required_argument, NULL, 'i'},
     {"yield", required_argument, NULL, 'y'},
     {"sync", required_argument, NULL, 's'},
+    {"lists", required_argument, NULL, 'l'},
     {0,0,0,0},
   };
 
   //number variables
   int nThreads = 1;
   int nIter = 1;
+  int nLists = 1;
   char *name = "list-none-none";
   //time holding structs
   struct timespec start;
@@ -60,7 +64,7 @@ int main(int argc, char*argv[]){
   //ACTUAL CODE
 
   //set the values for these variables using getopt_long
-  while((opt = getopt_long(argc,argv, "t:i:y:s:", longopts, &longindex)) != -1){
+  while((opt = getopt_long(argc,argv, "t:i:y:s:l:", longopts, &longindex)) != -1){
     switch(opt){
       //THREAD
     case 't':
@@ -95,7 +99,15 @@ int main(int argc, char*argv[]){
       }
       setName(&name);
       break;
-
+      //LISTS
+    case 'l':
+      temp = atoi(optarg);
+      if(temp < 1){
+	fprintf(stderr, "Number of lists must be at least 1. Skipping this option.\n");
+	continue;
+      }
+      nLists = temp;
+      break;
       //UNRECOGNIZED OPTION (DEFAULT)
     default:
       fprintf(stderr, "%s is not an option. Skipping this option.\n", argv[optind - 1]);
@@ -103,11 +115,32 @@ int main(int argc, char*argv[]){
     }
   }
 
+  //allocate memory for the mutex;
+  m = (pthread_mutex_t*) malloc(nLists * sizeof(pthread_mutex_t));
+  if(m == NULL){
+    fprintf(stderr, "Failed to allocate memory for the mutex lock\n");
+    exit(1);
+  }
+
+  //allocate memory for the spin lock
+  spinLock = (int*) malloc(nLists * sizeof(int));
+  if(spinLock == NULL){
+    fprintf(stderr, "Failed to allocate memory for the spin lock\n");
+    exit(1);
+  }
+
   //initialize empty list
-  SortedList_t list;
-  list.key = NULL;
-  list.next = NULL;
-  list.prev = NULL;
+  SortedList_t list[nLists];
+
+  //set initial value for mutex & spin lock
+  int l;
+  for (l = 0; l < nLists; l++){
+    pthread_mutex_init(&(m[l]), NULL);
+    spinLock[l] = 0;
+    list[l].key = NULL;
+    list[l].next = NULL;
+    list[l].prev = NULL;
+  }
 
   //Create element container
   SortedListElement_t slArr[nThreads * nIter];
@@ -126,9 +159,10 @@ int main(int argc, char*argv[]){
   pthArg args[nThreads];
   int t;
   for (t = 0; t < nThreads; t++){
-    args[t].list = &list;
+    args[t].list = list;
     args[t].nIter = nIter;
     args[t].nThreads = nThreads;
+    args[t].nLists = nLists;
     args[t].element = &(slArr[t * nIter]);
     muTimeArr[t] = 0;
     args[t].muTime = &(muTimeArr[t]);
@@ -165,11 +199,12 @@ int main(int argc, char*argv[]){
   }
 
   // check that list is zero
-  if(SortedList_length(&list) != 0){
-    fprintf(stderr, "list length is not 0 at the end\n");
-    exit(1);
+  for(t = 0; t < nLists; t++){
+    if(SortedList_length(&(list[t])) != 0){
+      fprintf(stderr, "list length is not 0 at the end\n");
+      exit(1);
+    }
   }
-
   //calculate the numbers to output
   int ops = nThreads * nIter * 3;
   long long sec = (long long) (end.tv_sec - start.tv_sec);
@@ -182,10 +217,10 @@ int main(int argc, char*argv[]){
   for(t=0; t < nThreads; t++){
     muTime += muTimeArr[t];
   }
-  muTime /= nThreads * (2 * nIter + 1);
+  muTime /= nThreads * (2 * nIter + nLists);
 
   //output as csv
-  printf("%s,%d,%d,%d,%d,%ld,%d", name, nThreads, nIter, 1, ops, result, tpo);
+  printf("%s,%d,%d,%d,%d,%ld,%d", name, nThreads, nIter, nLists, ops, result, tpo);
 
   if(doSync == 1){
     printf(",%ld\n", muTime);
@@ -194,6 +229,8 @@ int main(int argc, char*argv[]){
     printf("\n");
   }
 
+  free(m);
+  free(spinLock);
   return 0;
 
 }
@@ -345,34 +382,34 @@ int setSyncType(char *opt){
 
 }
 
-void syncLock(){
+void syncLock(int num){
 
   //if mutex option selected, attempt to lock
   if(doSync == 1){
-    if(pthread_mutex_lock(&m)){
+    if(pthread_mutex_lock(&(m[num]))){
       fprintf(stderr, "Error locking the critical section.\n");
       exit(1);
     }
   }
   
   else if(doSync == 2){
-    while(__sync_lock_test_and_set(&spinLock, 1)){
+    while(__sync_lock_test_and_set(&(spinLock[num]), 1)){
       continue;
     }
   }
 }
 
-void syncUnlock(){
+void syncUnlock(int num){
   //if mutex selected, attempt to unlock
   if(doSync == 1){
-    if(pthread_mutex_unlock(&m)){
+    if(pthread_mutex_unlock(&(m[num]))){
       fprintf(stderr, "Error unlocking the critical section.\n");
       exit(1);
     }
   }
   
   else if(doSync == 2){
-    __sync_lock_release(&spinLock);
+    __sync_lock_release(&(spinLock[num]));
   }
   
 }
@@ -395,26 +432,31 @@ void *listOps(void* args){
 
   struct timespec start,end;
   long long total = 0;
+  int hashNum, listSize;
 
   pthArg * pArgs = (pthArg*) args;
   
   int i;
   for(i = 0; i < pArgs->nIter; i++){
+    hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
     getTime(&start);
-    syncLock();
+    syncLock(hashNum);
     getTime(&end);
     total += getTimeDiff(&start,&end);
 
-    SortedList_insert(pArgs->list, &((pArgs->element)[i]));
-    syncUnlock();
+    SortedList_insert(&(pArgs->list[hashNum]), &((pArgs->element)[i]));
+    syncUnlock(hashNum);
   }
- 
-  getTime(&start);
-  syncLock();
-  getTime(&end);
-  total += getTimeDiff(&start,&end);
-  int listSize =  SortedList_length(pArgs->list);
-  syncUnlock();
+
+  listSize = 0; 
+  for(i=0; i < pArgs->nLists; i++){
+    getTime(&start);
+    syncLock(i);
+    getTime(&end);
+    total += getTimeDiff(&start,&end);
+    listSize +=  SortedList_length(&(pArgs->list[i]));
+    syncUnlock(i);
+  }
   if (listSize < (pArgs->nIter) || listSize > (pArgs->nIter) * (pArgs->nThreads)){
     fprintf(stderr, "Invalid number of elements.\n");
     exit(1);
@@ -422,22 +464,23 @@ void *listOps(void* args){
   
   SortedListElement_t *toDelete;
   for(i = 0; i < pArgs->nIter; i++){
+    hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
     getTime(&start);
-    syncLock();
+    syncLock(hashNum);
     getTime(&end);
     total += getTimeDiff(&start, &end);
 
-    if((toDelete = SortedList_lookup(pArgs->list, (pArgs->element)[i].key)) == NULL){
+    if((toDelete = SortedList_lookup(&(pArgs->list[hashNum]), (pArgs->element)[i].key)) == NULL){
       fprintf(stderr, "Failed to locate the key inserted.\n");
-      syncUnlock();
+      syncUnlock(hashNum);
       exit(1);
     }   
     if(SortedList_delete(toDelete)){
       fprintf(stderr, "Detected corruption upon deletion.\n");
-      syncUnlock();
+      syncUnlock(hashNum);
       exit(1);
     }
-    syncUnlock();
+    syncUnlock(hashNum);
   }
 
   *(pArgs->muTime) = total;
@@ -459,4 +502,15 @@ long long getTimeDiff(struct timespec *start, struct timespec *end){
   result = (long long)(end->tv_sec - start->tv_sec) * 1000000000 + (long long)(end->tv_nsec - start->tv_nsec);
 
   return result;
+}
+
+unsigned long hash(const unsigned char *str){
+  unsigned long hash = 5381;
+  int c;
+
+  while (c = *str++)
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+  return hash;
+
 }
