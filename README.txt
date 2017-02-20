@@ -11,5 +11,12 @@ Most of the cycles are being spent on the time each thread sleeps due to actual 
 2.3.2
 According to the performance test, the function syncLock(), which contains all of the codes that does the spinlock implementation (including polling), is consuming 4257/4523 of the cycles.
 
-This operations become so expensive because more threads compete against each other to get the lock for every insertion/lookup/delete etc. If one thread is doing any of the actions, all other 11 threads cannot do anything but to simply pole, wasting the wait time multiplied by the total number of waiting threads (11 * wait time).
+This operations become so expensive because more threads compete against each other to get the lock for every insertion/lookup/delete etc. If one thread is doing any of the actions, the other 11 threads will eat up CPU time just to poll to see if the other threads have given up the lock. The more threads in total, more threads will do the "eat-up CPU" action to prevent the other threads from getting their share processed.
+
+2.3.3
+Because average wait time counts the time spent to acquire the lock for EACH thread, and sums that up. For example, if all 12 threads happen to want to do insertion at the same time, while 1 is processing insertion, all 11 other threads will have to wait for acquisition, which multiplies the acquisition time of one thread by 11.
+
+Completion time per operation does not take into account the fact that multiple threads are spending time waiting for the lock. Essentially, it doesn't care whether more than one threads are waiting: it just gets the difference between starting point and end time, and divides the difference by number of operations.
+
+The wait time per operation went up faster as threads increased due to the fact that more and more threads will be waiting at the same time (former takes that into account, latter doesn't).
 
