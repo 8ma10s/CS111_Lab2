@@ -29,3 +29,18 @@ plot \
      title '(raw) mutex' with linespoints lc rgb 'grey', \
      "< grep list-none-s lab2_list.csv" using ($2):(1000000000/($7)) \
      title '(raw) spin-lock' with linespoints lc rgb 'violet'
+
+set title "lab2b_2: Wait-for-lock time for mutex"
+set xlabel "Threads"
+set logscale x 2
+unset xrange
+set xrange [0.75:]
+set ylabel "Wait Time (ns)"
+set logscale y 10
+set output 'lab2b_2.png'
+set key left top
+plot \
+     "< grep list-none-m lab_2b_list.csv" using ($2):($7) \
+     title 'Average Time Per Operation' with linespoints lc rgb 'red', \
+     "< grep list-none-m lab_2b_list.csv" using ($2):($8) \
+     title 'Average Wait Time Per Lock' with linespoints lc rgb 'green'

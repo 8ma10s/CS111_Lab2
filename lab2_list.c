@@ -12,6 +12,7 @@ typedef struct pthArg{
   SortedListElement_t *element;
   int nIter;
   int nThreads;
+  long long *muTime;
 }pthArg;
 
 ///GLOBAL VARIABLES
@@ -28,6 +29,8 @@ void syncLock();
 void syncUnlock();
 void setChar(SortedListElement_t slArr[], char chArr[][5], int arrSize);
 void *listOps(void* args);
+void getTime(struct timespec *ts);
+long long getTimeDiff(struct timespec *start, struct timespec *end);
 
 ///MAIN///
 int main(int argc, char*argv[]){
@@ -116,6 +119,9 @@ int main(int argc, char*argv[]){
   //Create thread ID container
   pthread_t thArr[nThreads];
 
+  //Create thread time container
+  long long muTimeArr[nThreads];
+
   //Create thread argument container
   pthArg args[nThreads];
   int t;
@@ -124,6 +130,8 @@ int main(int argc, char*argv[]){
     args[t].nIter = nIter;
     args[t].nThreads = nThreads;
     args[t].element = &(slArr[t * nIter]);
+    muTimeArr[t] = 0;
+    args[t].muTime = &(muTimeArr[t]);
   }
 
   //get the initial time, check for error
@@ -169,8 +177,22 @@ int main(int argc, char*argv[]){
   long long result = sec * 1000000000 + nsec;
   int tpo = result / ops;
 
+  //calculate mutex time
+  long long muTime = 0;
+  for(t=0; t < nThreads; t++){
+    muTime += muTimeArr[t];
+  }
+  muTime /= nThreads * (2 * nIter + 1);
+
   //output as csv
-  printf("%s,%d,%d,%d,%d,%ld,%d\n", name, nThreads, nIter, 1, ops, result, tpo);
+  printf("%s,%d,%d,%d,%d,%ld,%d", name, nThreads, nIter, 1, ops, result, tpo);
+
+  if(doSync == 1){
+    printf(",%ld\n", muTime);
+  }
+  else{
+    printf("\n");
+  }
 
   return 0;
 
@@ -371,16 +393,26 @@ void setChar(SortedListElement_t slArr[], char chArr[][5], int arrSize){
 
 void *listOps(void* args){
 
+  struct timespec start,end;
+  long long total = 0;
+
   pthArg * pArgs = (pthArg*) args;
   
   int i;
   for(i = 0; i < pArgs->nIter; i++){
+    getTime(&start);
     syncLock();
+    getTime(&end);
+    total += getTimeDiff(&start,&end);
+
     SortedList_insert(pArgs->list, &((pArgs->element)[i]));
     syncUnlock();
   }
-  
+ 
+  getTime(&start);
   syncLock();
+  getTime(&end);
+  total += getTimeDiff(&start,&end);
   int listSize =  SortedList_length(pArgs->list);
   syncUnlock();
   if (listSize < (pArgs->nIter) || listSize > (pArgs->nIter) * (pArgs->nThreads)){
@@ -390,7 +422,11 @@ void *listOps(void* args){
   
   SortedListElement_t *toDelete;
   for(i = 0; i < pArgs->nIter; i++){
+    getTime(&start);
     syncLock();
+    getTime(&end);
+    total += getTimeDiff(&start, &end);
+
     if((toDelete = SortedList_lookup(pArgs->list, (pArgs->element)[i].key)) == NULL){
       fprintf(stderr, "Failed to locate the key inserted.\n");
       syncUnlock();
@@ -403,4 +439,24 @@ void *listOps(void* args){
     }
     syncUnlock();
   }
+
+  *(pArgs->muTime) = total;
+
+}
+
+void getTime(struct timespec *ts){
+  if(doSync == 1){
+    if(clock_gettime(CLOCK_REALTIME, ts)){
+      fprintf(stderr, "Failed to obtain thread timecount.\n");
+      exit(1);
+    }  
+  }
+}
+
+long long getTimeDiff(struct timespec *start, struct timespec *end){
+  long long result;
+
+  result = (long long)(end->tv_sec - start->tv_sec) * 1000000000 + (long long)(end->tv_nsec - start->tv_nsec);
+
+  return result;
 }
