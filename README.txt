@@ -20,3 +20,9 @@ Completion time per operation does not take into account the fact that multiple 
 
 The wait time per operation went up faster as threads increased due to the fact that more and more threads will be waiting at the same time (former takes that into account, latter doesn't).
 
+2.3.4
+The throughput as a function of # of lists seems to increase dramatically from 1 list to 2 lists, but less on 4 to 8, and even less on 8 to 16. That is, the function seems to take some sort of log function that approaches a certain value as number of lists approach infinity.
+
+The throughput would not increase at some point because when number of lists exceed total number of elements, some of the lists will have no elements, producing either the same result as having equal number of lists per element, or producing less throughput due to having to check more lists to check for the total length of the list.
+
+Looking at the graph (especially mutex), the statement seems to be true. The results for 16 threads, 4 lists seems approximately equal to the result for 16/4=4 threads, 1 list. Similarly, result for 16 threads, 8 lists seems approximately equal t the result for 16/8=2 threads, 1 list.
