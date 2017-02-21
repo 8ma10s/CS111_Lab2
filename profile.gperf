@@ -1,0 +1,153 @@
+Total: 995 samples
+     666  66.9%  66.9%      666  66.9% syncLock
+     210  21.1%  88.0%      210  21.1% __strcmp_sse42
+      72   7.2%  95.3%      194  19.5% SortedList_insert
+      38   3.8%  99.1%      134  13.5% SortedList_lookup
+       8   0.8%  99.9%        8   0.8% _init
+       1   0.1% 100.0%      995 100.0% listOps
+       0   0.0% 100.0%      995 100.0% __clone
+       0   0.0% 100.0%      995 100.0% start_thread
+ROUTINE ====================== listOps in /u/cs/ugrad/yamato/CS111/Lab2/lab2_list.c
+     1    995 Total samples (flat / cumulative)
+     .      .  426:     slArr[i].key = (chArr[i]);
+     .      .  427:   }
+     .      .  428: 
+     .      .  429: }
+     .      .  430: 
+---
+     .      .  431: void *listOps(void* args){
+     .      .  432: 
+     .      .  433:   struct timespec start,end;
+     .      .  434:   long long total = 0;
+     .      .  435:   int hashNum, listSize;
+     .      .  436: 
+     .      .  437:   pthArg * pArgs = (pthArg*) args;
+     .      .  438:   
+     .      .  439:   int i;
+     .      .  440:   for(i = 0; i < pArgs->nIter; i++){
+     .      .  441:     hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
+     .      .  442:     getTime(&start);
+     .    441  443:     syncLock(hashNum);
+     .      .  444:     getTime(&end);
+     .      .  445:     total += getTimeDiff(&start,&end);
+     .      .  446: 
+     1    195  447:     SortedList_insert(&(pArgs->list[hashNum]), &((pArgs->element)[i]));
+     .      .  448:     syncUnlock(hashNum);
+     .      .  449:   }
+     .      .  450: 
+     .      .  451:   listSize = 0; 
+     .      .  452:   for(i=0; i < pArgs->nLists; i++){
+     .      .  453:     getTime(&start);
+     .      .  454:     syncLock(i);
+     .      .  455:     getTime(&end);
+     .      .  456:     total += getTimeDiff(&start,&end);
+     .      .  457:     listSize +=  SortedList_length(&(pArgs->list[i]));
+     .      .  458:     syncUnlock(i);
+     .      .  459:   }
+     .      .  460:   if (listSize < (pArgs->nIter) || listSize > (pArgs->nIter) * (pArgs->nThreads)){
+     .      .  461:     fprintf(stderr, "Invalid number of elements.\n");
+     .      .  462:     exit(1);
+     .      .  463:   }
+     .      .  464:   
+     .      .  465:   SortedListElement_t *toDelete;
+     .      .  466:   for(i = 0; i < pArgs->nIter; i++){
+     .      .  467:     hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
+     .      .  468:     getTime(&start);
+     .    225  469:     syncLock(hashNum);
+     .      .  470:     getTime(&end);
+     .      .  471:     total += getTimeDiff(&start, &end);
+     .      .  472: 
+     .    134  473:     if((toDelete = SortedList_lookup(&(pArgs->list[hashNum]), (pArgs->element)[i].key)) == NULL){
+     .      .  474:       fprintf(stderr, "Failed to locate the key inserted.\n");
+     .      .  475:       syncUnlock(hashNum);
+     .      .  476:       exit(1);
+     .      .  477:     }   
+     .      .  478:     if(SortedList_delete(toDelete)){
+     .      .  479:       fprintf(stderr, "Detected corruption upon deletion.\n");
+     .      .  480:       syncUnlock(hashNum);
+     .      .  481:       exit(1);
+     .      .  482:     }
+     .      .  483:     syncUnlock(hashNum);
+     .      .  484:   }
+     .      .  485: 
+     .      .  486:   *(pArgs->muTime) = total;
+     .      .  487: 
+     .      .  488: }
+---
+     .      .  489: 
+     .      .  490: void getTime(struct timespec *ts){
+     .      .  491:   if(doSync == 1){
+     .      .  492:     if(clock_gettime(CLOCK_REALTIME, ts)){
+     .      .  493:       fprintf(stderr, "Failed to obtain thread timecount.\n");
+ROUTINE ====================== listOps in /u/cs/ugrad/yamato/CS111/Lab2/lab2_list.c
+     1    995 Total samples (flat / cumulative)
+     .      .  426:     slArr[i].key = (chArr[i]);
+     .      .  427:   }
+     .      .  428: 
+     .      .  429: }
+     .      .  430: 
+---
+     .      .  431: void *listOps(void* args){
+     .      .  432: 
+     .      .  433:   struct timespec start,end;
+     .      .  434:   long long total = 0;
+     .      .  435:   int hashNum, listSize;
+     .      .  436: 
+     .      .  437:   pthArg * pArgs = (pthArg*) args;
+     .      .  438:   
+     .      .  439:   int i;
+     .      .  440:   for(i = 0; i < pArgs->nIter; i++){
+     .      .  441:     hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
+     .      .  442:     getTime(&start);
+     .    441  443:     syncLock(hashNum);
+     .      .  444:     getTime(&end);
+     .      .  445:     total += getTimeDiff(&start,&end);
+     .      .  446: 
+     1    195  447:     SortedList_insert(&(pArgs->list[hashNum]), &((pArgs->element)[i]));
+     .      .  448:     syncUnlock(hashNum);
+     .      .  449:   }
+     .      .  450: 
+     .      .  451:   listSize = 0; 
+     .      .  452:   for(i=0; i < pArgs->nLists; i++){
+     .      .  453:     getTime(&start);
+     .      .  454:     syncLock(i);
+     .      .  455:     getTime(&end);
+     .      .  456:     total += getTimeDiff(&start,&end);
+     .      .  457:     listSize +=  SortedList_length(&(pArgs->list[i]));
+     .      .  458:     syncUnlock(i);
+     .      .  459:   }
+     .      .  460:   if (listSize < (pArgs->nIter) || listSize > (pArgs->nIter) * (pArgs->nThreads)){
+     .      .  461:     fprintf(stderr, "Invalid number of elements.\n");
+     .      .  462:     exit(1);
+     .      .  463:   }
+     .      .  464:   
+     .      .  465:   SortedListElement_t *toDelete;
+     .      .  466:   for(i = 0; i < pArgs->nIter; i++){
+     .      .  467:     hashNum = (int)(hash(pArgs->element[i].key) % pArgs->nLists);
+     .      .  468:     getTime(&start);
+     .    225  469:     syncLock(hashNum);
+     .      .  470:     getTime(&end);
+     .      .  471:     total += getTimeDiff(&start, &end);
+     .      .  472: 
+     .    134  473:     if((toDelete = SortedList_lookup(&(pArgs->list[hashNum]), (pArgs->element)[i].key)) == NULL){
+     .      .  474:       fprintf(stderr, "Failed to locate the key inserted.\n");
+     .      .  475:       syncUnlock(hashNum);
+     .      .  476:       exit(1);
+     .      .  477:     }   
+     .      .  478:     if(SortedList_delete(toDelete)){
+     .      .  479:       fprintf(stderr, "Detected corruption upon deletion.\n");
+     .      .  480:       syncUnlock(hashNum);
+     .      .  481:       exit(1);
+     .      .  482:     }
+     .      .  483:     syncUnlock(hashNum);
+     .      .  484:   }
+     .      .  485: 
+     .      .  486:   *(pArgs->muTime) = total;
+     .      .  487: 
+     .      .  488: }
+---
+     .      .  489: 
+     .      .  490: void getTime(struct timespec *ts){
+     .      .  491:   if(doSync == 1){
+     .      .  492:     if(clock_gettime(CLOCK_REALTIME, ts)){
+     .      .  493:       fprintf(stderr, "Failed to obtain thread timecount.\n");
