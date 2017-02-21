@@ -1,4 +1,4 @@
-tarfile = SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2b*.png README.txt lab2b.gp profile.gperf libprofiler.so libprofiler.so.0.4.8 pprof
+tarfile = SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab_2b_list.csv lab2b*.png README.txt lab2b.gp profile.gperf libprofiler.so libprofiler.so.0.4.8 pprof
 
 rmfile = lab2b-804608241.tar.gz lab2b*.png SortedList.o lab2_list.o lab2_list lab_2b_list.csv raw.gperf profile.gperf
 
