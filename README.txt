@@ -13,6 +13,9 @@ lab2_add.csv: Data points to be used to generate graphs
 profile.gperf: Profile information containing where cycles are used for spin-lock
 README.txt: Information on included files and answers to questions
 lab2b.gp: gnuplot file to generate graphs
+libprofiler.so: libprofiler for gprof
+libprofiler.so.0.4.8: libprofiler executable
+pprof: software to create profile
 
 Questions
 

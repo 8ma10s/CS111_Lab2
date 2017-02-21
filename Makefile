@@ -1,4 +1,4 @@
-tarfile = SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2b*.png README.txt lab2b.gp profile.gperf
+tarfile = SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2b*.png README.txt lab2b.gp profile.gperf libprofiler.so libprofiler.so.0.4.8 pprof
 
 rmfile = lab2b-804608241.tar.gz lab2b*.png SortedList.o lab2_list.o lab2_list lab_2b_list.csv raw.gperf profile.gperf
 
@@ -11,7 +11,7 @@ SortedList.o: SortedList.h SortedList.c
 lab2_list.o: lab2_list.c
 	gcc -g -o lab2_list.o -c lab2_list.c -pthread
 
-profile: lab2_list libprofiler.so pprof
+profile: lab2_list pprof libprofiler.so libprofiler.so.0.4.8
 	LD_PRELOAD=./libprofiler.so CPUPROFILE=./raw.gperf ./lab2_list --threads=12 --iterations=1000 --sync=s
 	pprof --text ./lab2_list ./raw.gperf > profile.gperf
 	pprof --list=listOps ./lab2_list ./raw.gperf >> profile.gperf
