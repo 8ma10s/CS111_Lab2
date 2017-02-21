@@ -1,20 +1,20 @@
-tarfile = SortedList.h SortedList.c lab2b_list.c Makefile lab2_add.csv lab2b*.png README.txt
+tarfile = SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2b*.png README.txt lab2b.gp profile.gperf
 
-rmfile = lab2a-804608241.tar.gz lab2b*.png SortedList.o lab2_list.o lab2_list lab_2b_list.csv
+rmfile = lab2b-804608241.tar.gz lab2b*.png SortedList.o lab2_list.o lab2_list lab_2b_list.csv raw.gperf profile.gperf
 
 build: lab2_list.o SortedList.o
 	gcc -g -o lab2_list lab2_list.o SortedList.o -pthread
 
 SortedList.o: SortedList.h SortedList.c
-	gcc -g -o SortedList.o -c SortedList.c
+	gcc -g -o SortedList.o -c SortedList.c -pthread
 
 lab2_list.o: lab2_list.c
-	gcc -g -o lab2_list.o -c lab2_list.c
+	gcc -g -o lab2_list.o -c lab2_list.c -pthread
 
-profile: lab2_list
-	LD_PRELOAD=libprofiler.so CPUPROFILE=./raw.gperf ./lab2_list --threads=12 --iterations=1000 --sync=s
+profile: lab2_list libprofiler.so pprof
+	LD_PRELOAD=./libprofiler.so CPUPROFILE=./raw.gperf ./lab2_list --threads=12 --iterations=1000 --sync=s
 	pprof --text ./lab2_list ./raw.gperf > profile.gperf
-	pprof --list=listOps ./lab2_list ./raw.gperf >> prfile.gperf
+	pprof --list=listOps ./lab2_list ./raw.gperf >> profile.gperf
 
 tests:
 	rm -f lab_2b_list.csv
@@ -142,10 +142,10 @@ tests:
 	-./lab2_list --threads=12 --iterations=1000 --lists=16 --sync=m >> lab_2b_list.csv
 	-./lab2_list --threads=16 --iterations=1000 --lists=16 --sync=m >> lab_2b_list.csv
 
-graphs: lab2b.gp
+graphs: lab2b.gp lab_2b_list.csv
 	/usr/local/cs/bin/gnuplot lab2b.gp
 
 tarball: $(tarfile)
-	tar -czvf lab2a-804608241.tar.gz $(tarfile)
+	tar -czvf lab2b-804608241.tar.gz $(tarfile)
 clean:
 	rm $(rmfile)

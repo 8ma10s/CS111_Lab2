@@ -1,3 +1,18 @@
+Included Files
+lab2_list.c: driver program for linked lists
+SortedList.c: Implementation of sorted list
+SortedList.h: Definitions of sorted list
+lab2b_1.png: Throughput of protected (mutex/spinlock) operations, single list
+lab2b_2.png: Wait-for-lock time/average operation time comparison for mutex
+lab2b_3.png: Threads/Iterations that run without failure (Protected/Unprotected)
+lab2b_4.png: spin-lock throughput for various threads, iterations, and list numbers
+lab2b_5.png: mutex throughput for various threads, iterations, and list numbers
+Makefile: Information to be used to execute various make commands
+lab_2b_list.csv: Data points to be used to generate graphs
+lab2_add.csv: Data points to be used to generate graphs
+profile.gperf: Profile information containing where cycles are used for spin-lock
+README.txt: Information on included files and answers to questions
+lab2b.gp: gnuplot file to generate graphs
 
 Questions
 
@@ -9,7 +24,7 @@ Most of the cycles are being spent in the polling process in the spin-lock tests
 Most of the cycles are being spent on the time each thread sleeps due to actual operation for mutex locks. Looking at the add and list operations, the throughput of list operation decrease constantly as number of threads increases, but not so much for add operations. That indicates that the large amount of time is used for insertion,deletion of list: as threads increases, so does the number of elements that needs to be inserted increases, and each insertion/deletion locks the entire linked list, causing other threads to sleep until it is done.
 
 2.3.2
-According to the performance test, the function syncLock(), which contains all of the codes that does the spinlock implementation (including polling), is consuming 4257/4523 of the cycles.
+According to the performance test, the function syncLock(), which contains all of the codes that does the spinlock implementation (including polling) (about twice the cycle of insertion).
 
 This operations become so expensive because more threads compete against each other to get the lock for every insertion/lookup/delete etc. If one thread is doing any of the actions, the other 11 threads will eat up CPU time just to poll to see if the other threads have given up the lock. The more threads in total, more threads will do the "eat-up CPU" action to prevent the other threads from getting their share processed.
 
